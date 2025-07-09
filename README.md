@@ -85,7 +85,7 @@ Ejecuta tu API de FastAPI desde la terminal en la carpeta de tu proyecto:
 
 Bash
 
-uvicorn main:app --reload
+uvicorn api:app --reload
 Esto iniciará tu API, generalmente en http://127.0.0.1:8000 o http://0.0.0.0:8000 (localhost en el puerto 8000).
 
 ### 3. Exposición de la API con Ngrok
