@@ -231,8 +231,8 @@ Revisa la consola de tu API de FastAPI para ver los mensajes DEBUG y cualquier e
 Ajusta los prompts de tus cadenas de LangChain en main.py para mejorar la precisión de la clasificación o la calidad de las respuestas si es necesario.
 
 ## 👨‍💻 Desarrollado por:
-                        - Mahalia Yánez Monzón
-                        - Manuel Castillo Casañas
+                                        - Mahalia Yánez Monzón
+                                        - Manuel Castillo Casañas
 
 ## 📄 Licencia
 Este proyecto está distribuido bajo la licencia GNU General Public License v3.0 (GPLv3). Consulta el archivo LICENSE para más detalles.
