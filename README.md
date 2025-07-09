@@ -44,7 +44,8 @@ Para instalar todas las dependencias del proyecto, asegúrate de tener Python y 
 
 Bash
 
-pip install -r requirements.txt
+- pip install -r requirements.txt
+
 Esto instalará automáticamente todas las librerías con las versiones exactas especificadas, asegurando un entorno de desarrollo consistente.
 
 
