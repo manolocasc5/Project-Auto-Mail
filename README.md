@@ -148,33 +148,17 @@ Función: Bifurca el flujo del escenario basándose en la categoría clasificada
 
 Conexión: Colócalo después del Módulo 2.
 
-Ruta A: Responder Automáticamente (para, ej., "Soporte Técnico")
+###### Ruta A: Responder Automáticamente (para, ej., "Soporte Técnico")
 
-Filtro: En la línea que sale del Router.
+Filtro: En una línea que sale del Router.
 
 Condición: {{2.Data.category}} Equal to "Soporte Técnico" (usa la categoría exacta que tu API devuelve).
 
-Siguiente Módulo: HTTP - Make a request (Generar Respuesta)
+###### Ruta B: Requerir Atención
 
-Función: Llama a tu API para generar un borrador de respuesta.
+Filtro: En otra línea que sale del Router.
 
-Método: POST
-
-URL: https://TU_URL_NGROK.ngrok-free.app/generate_response/
-
-Headers: Content-Type: application/json
-
-Body Type: Raw, Content Type: JSON (application/json)
-
-Request Content:
-
-JSON
-
-{
-  "subject": "{{1.Subject}}",
-  "body": "{{1.HTML content}}",
-  "category": "{{2.Data.category}}"
-}
+Condición: {{2.Data.category}} Not equal to "Soporte Técnico" (o define las categorías específicas que requieran atención manual).
 
 ##### Módulo 4: HTTP - Make a request (Generar Respuesta)
 
