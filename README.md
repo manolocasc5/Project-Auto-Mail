@@ -31,14 +31,15 @@ Ngrok: Herramienta para crear un túnel seguro desde tu máquina local a interne
 ### Librerías Python
 Asegúrate de instalar todas estas librerías en tu entorno Python. Puedes hacerlo con pip:
 
-fastapi==0.111.0
-uvicorn==0.30.1
-python-dotenv==1.0.0
-beautifulsoup4==4.12.3
-langchain-google-genai==1.0.0
-langchain-core==0.2.14
+- fastapi==0.111.0
+- uvicorn==0.30.1
+- python-dotenv==1.0.0
+- beautifulsoup4==4.12.3
+- langchain-google-genai==1.0.0
+- langchain-core==0.2.14
 
 #### Cómo utilizar requirements.txt
+
 Para instalar todas las dependencias del proyecto, asegúrate de tener Python y pip instalados. Luego, abre tu terminal, navega hasta el directorio raíz de tu proyecto (donde se encuentra el archivo requirements.txt) y ejecuta el siguiente comando:
 
 Bash
