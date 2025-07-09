@@ -69,7 +69,7 @@ Sigue estos pasos para poner en marcha el proyecto desde cero.
 ### 1. Configuración de Google Gemini API Key
 Ve a Google AI Studio o a la Consola de Google Cloud para generar una API Key para Google Gemini.
 
-Crea un archivo llamado .env en la raíz de tu proyecto de FastAPI (en la misma carpeta que main.py).
+Crea un archivo llamado .env en la raíz de tu proyecto de FastAPI (en la misma carpeta que api.py).
 
 Añade tu API Key a este archivo:
 
@@ -77,9 +77,9 @@ GOOGLE_API_KEY="TU_API_KEY_AQUI"
 ¡Importante! Nunca compartas este archivo ni lo subas a un repositorio público (GitHub). .env ya debería estar en tu .gitignore.
 
 ### 2. Desarrollo y Configuración de la API de FastAPI
-El código de tu API se encuentra en main.py. Aquí se definen los endpoints para clasificar y generar respuestas.
+El código de tu API se encuentra en api.py. Aquí se definen los endpoints para clasificar y generar respuestas.
 
-Guarda el código de tu API (el que hemos desarrollado y depurado juntos) en un archivo llamado main.py.
+Guarda el código de tu API (el que hemos desarrollado y depurado juntos) en un archivo llamado api.py.
 
 Ejecuta tu API de FastAPI desde la terminal en la carpeta de tu proyecto:
 
@@ -241,7 +241,7 @@ Monitoriza el historial de ejecución en Make.com para ver el flujo de datos y l
 
 Revisa la consola de tu API de FastAPI para ver los mensajes DEBUG y cualquier error detallado que tu API capture.
 
-Ajusta los prompts de tus cadenas de LangChain en main.py para mejorar la precisión de la clasificación o la calidad de las respuestas si es necesario.
+Ajusta los prompts de tus cadenas de LangChain en api.py para mejorar la precisión de la clasificación o la calidad de las respuestas si es necesario.
 
 ## 👨‍💻 Desarrollado por:
                                         - Mahalia Yánez Monzón
