@@ -198,7 +198,7 @@ Filtro: En otra línea que sale del Router.
 
 Condición: {{2.Data.category}} Not equal to "Soporte Técnico" (o define las categorías específicas que requieran atención).
 
-### Módulo 6: Gmail - Send an Email (Notificación)
+##### Módulo 6: Gmail - Send an Email (Notificación)
 
 Función: Te envía una notificación a ti o a tu equipo.
 
