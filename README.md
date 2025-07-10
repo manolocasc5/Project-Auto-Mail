@@ -137,9 +137,10 @@ Request Content:
 JSON
 
 {
-  "subject": "{{1.Subject}}",
-  "body": "{{1.HTML content}}"
+  "subject": "{{1.subject}}",
+  "body": "{{replace(1.Text + content; "\n"; "\\n") | escapejson}}"
 }
+
 Nota: Aunque el historial de Make.com pueda mostrar esto de forma incorrecta, tu API de FastAPI está configurada para extraer subject y body robustamente del raw_body.
 
 ##### Módulo 3: Router
@@ -177,9 +178,9 @@ Request Content:
 JSON
 
 {
-  "subject": "{{1.Subject}}",
-  "body": "{{1.HTML content}}",
-  "category": "{{2.Data.category}}"
+  "subject": "{{1.subject}}",
+  "body": "{{replace(1.Text + content; "\n"; "\\n") | escapejson}}",
+  "category": "{{2.data.category}}"
 }
 
 ##### Módulo 5: Gmail - Send an Email
