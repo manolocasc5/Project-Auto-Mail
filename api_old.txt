@@ -1,0 +1,16 @@
+Para versión anterior de api.py:
+
+Configuración de JSON en módulos HTTP de Make.com
+
+HTTP 1:
+{
+  "subject": "{{1.Subject}}",
+  "body": "{{1.HTML content}}"
+}
+
+HTTP 2:
+{
+  "subject": "{{1.Subject}}",
+  "body": "{{1.HTML content}}",
+  "category": "{{2.Data.category}}"
+}
