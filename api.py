@@ -1,31 +1,31 @@
 import os
-from fastapi import FastAPI, Request, HTTPException
+import re
+import json
+from fastapi import FastAPI, HTTPException, Request # Asegúrate de que 'Request' esté importado
 from pydantic import BaseModel, ValidationError
 from dotenv import load_dotenv
 from bs4 import BeautifulSoup
 from langchain_google_genai import ChatGoogleGenerativeAI
 from langchain_core.prompts import ChatPromptTemplate
 from langchain_core.output_parsers import StrOutputParser
-import json
-import re
 
-# Carga las variables de entorno
+# --- Carga de Variables de Entorno y Configuración de FastAPI/Gemini (mantener igual) ---
 load_dotenv()
-
 app = FastAPI(
-    title="Email Classification and Response API",
-    description="API para clasificar correos electrónicos y generar respuestas usando Google Gemini.",
+    title="API de Clasificación y Respuesta de Correos",
+    description="API para clasificar correos electrónicos y generar respuestas "
+                "automáticas usando Google Gemini.",
     version="1.0.0",
 )
-
-# Configuración de Google Gemini
 GOOGLE_API_KEY = os.getenv("GOOGLE_API_KEY")
 if not GOOGLE_API_KEY:
-    raise ValueError("La variable de entorno GOOGLE_API_KEY no está configurada.")
-
+    raise ValueError(
+        "La variable de entorno GOOGLE_API_KEY no está configurada. "
+        "Asegúrate de tener un archivo .env con GOOGLE_API_KEY='tu_clave_aqui'."
+    )
 llm = ChatGoogleGenerativeAI(model="gemini-2.5-flash", google_api_key=GOOGLE_API_KEY)
 
-# Modelos Pydantic
+# --- Modelos Pydantic (mantener igual) ---
 class EmailInput(BaseModel):
     subject: str
     body: str
@@ -41,7 +41,7 @@ class CategoryOutput(BaseModel):
 class ResponseOutput(BaseModel):
     response_text: str
 
-# Plantillas y Cadenas
+# --- Plantillas de Prompt para LangChain (mantener igual) ---
 classification_prompt = ChatPromptTemplate.from_messages([
     ("system", """Eres un asistente de IA especializado en clasificar correos electrónicos.
     Tu tarea es clasificar el siguiente correo electrónico en una de las siguientes categorías predefinidas:
@@ -67,89 +67,102 @@ response_generation_prompt = ChatPromptTemplate.from_messages([
 ])
 response_generation_chain = response_generation_prompt | llm | StrOutputParser()
 
-# Función para limpiar HTML (¡Esta es la clave!)
-def clean_html_content(html_content: str) -> str:
-    if not html_content:
+# --- Función para Limpiar y Normalizar Contenido (mantener igual) ---
+def clean_text_content(text_content: str) -> str:
+    if not text_content:
         return ""
-    # Aseguramos que solo se procese si es una cadena y no un valor nulo/vacío
-    if isinstance(html_content, str):
-        soup = BeautifulSoup(html_content, 'html.parser')
-        return soup.get_text(separator=' ', strip=True)
-    return html_content # Devolvemos sin cambios si no es una cadena (aunque no debería pasar)
+    if not isinstance(text_content, str):
+        return str(text_content)
 
-# Endpoints
-@app.post("/classify_email/", summary="Clasifica un correo electrónico", response_description="Categoría del correo clasificado", response_model=CategoryOutput)
-async def classify_email_endpoint(request: Request):
+    if '<' in text_content and '>' in text_content and len(text_content) > 50:
+        print(f"WARNING: Se detectaron etiquetas HTML en lo que debería ser texto plano. "
+            f"Intentando limpiar con BeautifulSoup: {text_content[:200]}...")
+        soup = BeautifulSoup(text_content, 'html.parser')
+        for script_or_style in soup(["script", "style"]):
+            script_or_style.extract()
+        text = soup.get_text(separator=' ', strip=True)
+    else:
+        text = text_content
+
+    text = re.sub(r'\s{2,}', ' ', text).strip()
+    return text
+
+# --- Endpoints de la API ---
+
+@app.post("/classify_email/",
+        summary="Clasifica un correo electrónico",
+        response_description="Categoría del correo clasificado",
+        response_model=CategoryOutput)
+async def classify_email_endpoint(request: Request): # <--- ¡CAMBIO CLAVE PARA DEPURACIÓN! Recibimos el objeto Request
+    """
+    [DEPURACIÓN ACTIVA] Recibe una solicitud de correo para inspeccionar su contenido crudo
+    y diagnosticar problemas de formato JSON.
+    """
     try:
-        raw_body_str = (await request.body()).decode('utf-8')
-        print(f"DEBUG: Raw body received for classification: {raw_body_str[:500]}...")
+        # Lee el cuerpo de la solicitud en crudo
+        raw_body = await request.body()
+        raw_body_str = raw_body.decode('utf-8')
 
-        subject_match = re.search(r'"subject":\s*"(.*?)(?<!\\)"', raw_body_str)
-        body_match = re.search(r'"body":\s*"(.*?)(?<!\\)"', raw_body_str, re.DOTALL)
+        print(f"\n--- DEBUG: CUERPO CRUDO RECIBIDO DESDE MAKE.COM ---\n{raw_body_str}\n--- FIN CUERPO CRUDO ---\n")
 
-        extracted_subject = subject_match.group(1) if subject_match else ""
-        extracted_body = body_match.group(1) if body_match else ""
+        # Intentar parsear el JSON y luego validar con Pydantic
+        try:
+            data = json.loads(raw_body_str) # Intenta convertir la cadena cruda a un diccionario Python
+            print(f"--- DEBUG: JSON PARSEADO CORRECTAMENTE ---\n{json.dumps(data, indent=2)}\n--- FIN JSON PARSEADO ---\n")
 
-        if not extracted_body and 'dir="' in raw_body_str:
-            body_start_index = raw_body_str.find('"body": "') + len('"body": "')
-            # Ajustamos la búsqueda del final del body para ser más robusta
-            # Buscamos la última comilla que no sea escapada, seguida opcionalmente de \n"}\n
-            body_end_match = re.search(r'(?<!\\)"(?:\n"|\n}\n)?\s*$', raw_body_str[body_start_index:], re.DOTALL)
-            if body_end_match:
-                body_end_index = body_start_index + body_end_match.start()
-                temp_body = raw_body_str[body_start_index:body_end_index]
-                # Limpiamos las barras invertidas de escapes JSON para que BeautifulSoup lo vea correctamente
-                extracted_body = temp_body.replace('\\"', '"').replace('\\n', '\n').replace('\\r', '\r')
-            else:
-                extracted_body = "" # Fallback si el regex no encuentra el final
+            email_input = EmailInput(**data) # Intenta validar el diccionario con el modelo Pydantic
+            print(f"DEBUG: Validación Pydantic exitosa. Asunto: '{email_input.subject}', Inicio del cuerpo: '{email_input.body[:200]}...'")
 
-        email_input = EmailInput(subject=extracted_subject, body=extracted_body)
+            # Si la validación es exitosa, se procede con la lógica original
+            cleaned_body = clean_text_content(email_input.body)
+            print(f"DEBUG: Cuerpo normalizado para clasificación: '{cleaned_body[:500]}...'")
 
-        # ¡Aquí es donde se limpia el body antes de pasarlo a Gemini para clasificación!
-        cleaned_body = clean_html_content(email_input.body)
-        print(f"DEBUG: Cleaned body for classification: {cleaned_body[:500]}...") # Añadido para depuración
+            category = await classification_chain.ainvoke({"subject": email_input.subject, "body": cleaned_body})
+            return {"category": category.strip()}
 
-        category = await classification_chain.ainvoke({"subject": email_input.subject, "body": cleaned_body})
-        return {"category": category.strip()}
+        except json.JSONDecodeError as e:
+            # Captura específicamente errores de formato JSON
+            print(f"ERROR: Fallo al decodificar JSON del cuerpo crudo. Error: {e}")
+            raise HTTPException(
+                status_code=400,
+                detail=f"Formato JSON inválido recibido: {e}. Cuerpo crudo: {raw_body_str[:500]}..."
+            )
+        except ValidationError as e:
+            # Captura errores de validación de Pydantic (ej. campos faltantes, tipos incorrectos)
+            print(f"ERROR: Error de Validación Pydantic para los datos de entrada: {e.errors()}")
+            # Intenta mostrar los datos parseados antes de la validación fallida
+            input_preview = {}
+            if 'subject' in data: input_preview['subject'] = data['subject']
+            if 'body' in data: input_preview['body_preview'] = data['body'][:200]
+            raise HTTPException(
+                status_code=422,
+                detail={"message": "Error de validación de datos de entrada.", "errors": e.errors(), "input_preview": input_preview}
+            )
 
-    except ValidationError as e:
-        print(f"Error de validación Pydantic: {e.errors()}")
-        raise HTTPException(status_code=422, detail=e.errors())
-    except HTTPException as e:
-        raise e
     except Exception as e:
-        print(f"Error inesperado al clasificar el correo: {e}")
-        raise HTTPException(status_code=500, detail=f"Internal server error during classification: {e}. Raw body: {raw_body_str[:200]}...")
+        # Captura cualquier otro error inesperado que no sea de JSON o Pydantic
+        print(f"ERROR: Error inesperado en classify_email_endpoint (modo depuración): {e}")
+        raise HTTPException(
+            status_code=500,
+            detail=f"Error interno del servidor durante la depuración de clasificación: {e}"
+        )
 
-@app.post("/generate_response/", summary="Genera una respuesta para un correo", response_description="Texto de la respuesta generada", response_model=ResponseOutput)
-async def generate_response_endpoint(request: Request):
+# --- Endpoint para Generar Respuesta (mantener igual la última versión que te pasé) ---
+@app.post("/generate_response/",
+        summary="Genera una respuesta para un correo",
+        response_description="Texto de la respuesta generada",
+        response_model=ResponseOutput)
+async def generate_response_endpoint(response_data: ResponseInput):
+    """
+    Recibe el asunto, el cuerpo (en texto plano) y la categoría de un correo
+    para generar un borrador de respuesta.
+    """
     try:
-        raw_body_str = (await request.body()).decode('utf-8')
-        print(f"DEBUG: Raw body received for response: {raw_body_str[:500]}...")
+        print(f"DEBUG: Body recibido para respuesta (Pydantic parsed) TIPO: {type(response_data.body)}")
+        print(f"DEBUG: Body recibido para respuesta (Pydantic parsed) INICIO: {response_data.body[:500]}...")
 
-        subject_match = re.search(r'"subject":\s*"(.*?)(?<!\\)"', raw_body_str)
-        body_match = re.search(r'"body":\s*"(.*?)(?<!\\)"', raw_body_str, re.DOTALL)
-        category_match = re.search(r'"category":\s*"(.*?)(?<!\\)"', raw_body_str)
-
-        extracted_subject = subject_match.group(1) if subject_match else ""
-        extracted_body = body_match.group(1) if body_match else ""
-        extracted_category = category_match.group(1) if category_match else ""
-
-        if not extracted_body and 'dir="' in raw_body_str:
-            body_start_index = raw_body_str.find('"body": "') + len('"body": "')
-            body_end_match = re.search(r'(?<!\\)"(?:\n"|\n}\n)?\s*$', raw_body_str[body_start_index:], re.DOTALL)
-            if body_end_match:
-                body_end_index = body_start_index + body_end_match.start()
-                temp_body = raw_body_str[body_start_index:body_end_index]
-                extracted_body = temp_body.replace('\\"', '"').replace('\\n', '\n').replace('\\r', '\r')
-            else:
-                extracted_body = "" # Fallback
-
-        response_data = ResponseInput(subject=extracted_subject, body=extracted_body, category=extracted_category)
-
-        # ¡Aquí es donde se limpia el body antes de pasarlo a Gemini para generar la respuesta!
-        cleaned_body = clean_html_content(response_data.body)
-        print(f"DEBUG: Cleaned body for response: {cleaned_body[:500]}...") # Añadido para depuración
+        cleaned_body = clean_text_content(response_data.body)
+        print(f"DEBUG: Body normalizado para respuesta (después de la función) INICIO: {cleaned_body[:500]}...")
 
         response_text = await response_generation_chain.ainvoke({
             "subject": response_data.subject,
@@ -157,16 +170,26 @@ async def generate_response_endpoint(request: Request):
             "category": response_data.category
         })
         return {"response_text": response_text.strip()}
-    except ValidationError as e:
-        print(f"Error de validación Pydantic en respuesta: {e.errors()}")
-        raise HTTPException(status_code=422, detail=e.errors())
-    except HTTPException as e:
-        raise e
-    except Exception as e:
-        print(f"Error inesperado al generar la respuesta: {e}")
-        raise HTTPException(status_code=500, detail=f"Internal server error during response generation: {e}. Raw body: {raw_body_str[:200]}...")
 
-# Endpoint de prueba para verificar que la API está funcionando
-@app.get("/")
+    except ValidationError as e:
+        print(f"ERROR: Validación Pydantic fallida en /generate_response/: {e.errors()}")
+        error_detail = {"subject": response_data.subject, "body_preview": response_data.body[:200], "category": response_data.category}
+        raise HTTPException(
+            status_code=422,
+            detail={"message": "Error de validación de datos de entrada.", "errors": e.errors(), "input_preview": error_detail}
+        )
+    except Exception as e:
+        print(f"ERROR: Error inesperado al generar la respuesta: {e}")
+        raise HTTPException(
+            status_code=500,
+            detail=f"Error interno del servidor durante la generación de respuesta: {e}. Asunto: {response_data.subject[:100]}"
+        )
+
+# --- Endpoint de Prueba (Health Check) ---
+@app.get("/", summary="Verificar estado de la API")
 async def read_root():
-    return {"message": "API de automatización de correo con LangChain y Gemini funcionando!"}
+    """
+    Endpoint simple para verificar que la API está funcionando correctamente.
+    Retorna un mensaje de éxito.
+    """
+    return {"message": "API de automatización de correo con LangChain y Gemini funcionando correctamente."}
